@@ -20,10 +20,6 @@ public class LikeService {
     }
 
     public void unlike(String postId, String username) {
-        if (username != null && !username.isBlank()) {
-            likeRepository.unlike(postId, username);
-        } else {
-            likeRepository.unlikeAll(postId);
-        }
+        likeRepository.unlike(postId, username);
     }
 }

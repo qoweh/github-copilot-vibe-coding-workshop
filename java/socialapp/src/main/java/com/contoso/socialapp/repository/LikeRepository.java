@@ -23,7 +23,4 @@ public class LikeRepository {
         jdbc.update("DELETE FROM likes WHERE post_id=? AND username=?", postId, username);
     }
 
-    public void unlikeAll(String postId) {
-        jdbc.update("DELETE FROM likes WHERE post_id=?", postId);
-    }
 }

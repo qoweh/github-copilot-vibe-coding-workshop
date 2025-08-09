@@ -1,85 +1,137 @@
 ﻿@page "/"
-@inject Services.PostApiService PostApi
-@inject Services.AuthState Auth
+@rendermode InteractiveServer
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Contoso Outdoor Social</PageTitle>
 
-@if(!_initialized)
-{
-	<p class="text-center py-4 text-gray-500">Loading...</p>
-}
-else if(!Auth.IsAuthenticated)
-{
-	<LoginPrompt OnLogin="HandleLoggedIn" />
-}
-else if(_error is not null)
-{
-	<div class="text-red-500">@_error</div>
-}
-else if(_posts.Count == 0)
-{
-	<div class="text-gray-400">No posts yet.</div>
-}
-else
-{
-	<div class="flex flex-col gap-4">
-		@foreach (var p in _posts)
-		{
-			<PostCard Post="p" OnPostUpdated="HandlePostUpdated" OnPostDeleted="HandlePostDeleted" />
-		}
-	</div>
-}
-
-@if (Auth.IsAuthenticated)
-{
-	<FabButton OnClick="OpenCreate" />
-	<PostCreateModal @ref="_createModal" OnCreated="HandleCreated" />
-}
+<div class="w-full max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6 text-gray-900">Contoso Outdoor Social</h1>
+    
+    @if (isLoading)
+    {
+        <div class="text-center py-10 text-gray-500">Loading posts...</div>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="text-center py-10 text-red-500">@error</div>
+    }
+    else if (posts.Count == 0)
+    {
+        <div class="text-center py-10 text-gray-400">No posts yet.</div>
+    }
+    else
+    {
+        <div class="flex flex-col gap-4">
+            @foreach (var post in posts)
+            {
+                <PostCard Post="post" OnPostDeleted="HandlePostDeleted" OnPostUpdated="HandlePostUpdated" />
+            }
+        </div>
+    }
+    
+    <FloatingActionButton OnClick="HandleOpenPostModal" />
+    <PostingModal IsOpen="isPostModalOpen" OnClose="HandleClosePostModal" OnPostCreated="HandlePostCreated" />
+    <NameInputModal IsOpen="isNameModalOpen" OnClose="HandleNameModalClose" />
+</div>
 
 @code {
-	private bool _initialized;
-	private string? _error;
-	private List<Services.PostApiService.PostDto> _posts = new();
-	private Contoso.BlazorApp.Components.Posts.PostCreateModal? _createModal;
+    private List<Post> posts = new();
+    private bool isLoading = true;
+    private string error = "";
+    private bool isPostModalOpen = false;
+    private bool isNameModalOpen = false;
 
-	protected override async Task OnInitializedAsync()
-	{
-		if(Auth.IsAuthenticated)
-			await LoadAsync();
-		_initialized = true;
-	}
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+    }
 
-	private async Task LoadAsync()
-	{
-		try
-		{
-			_error = null;
-			_posts = await PostApi.GetPostsAsync();
-		}
-		catch(Exception)
-		{
-			_error = "Failed to load posts.";
-		}
-	}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthService.InitializeAsync();
+            
+            if (!AuthService.AuthState.IsLoading && !AuthService.AuthState.IsAuthenticated)
+            {
+                isNameModalOpen = true;
+            }
+            else if (AuthService.AuthState.IsAuthenticated)
+            {
+                await FetchPosts();
+            }
+            
+            StateHasChanged();
+        }
+    }
 
-	private async Task HandleCreated(Services.PostApiService.PostDto post)
-	{
-		_posts.Insert(0, post);
-		StateHasChanged();
-	}
+    private void HandleAuthStateChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            if (!AuthService.AuthState.IsLoading && !AuthService.AuthState.IsAuthenticated)
+            {
+                isNameModalOpen = true;
+            }
+            else if (AuthService.AuthState.IsAuthenticated)
+            {
+                await FetchPosts();
+            }
+            StateHasChanged();
+        });
+    }
 
-	private void HandlePostUpdated(Services.PostApiService.PostDto updated)
-	{
-		var idx = _posts.FindIndex(p => p.id == updated.id);
-		if(idx >=0) _posts[idx] = updated;
-	}
+    private async Task FetchPosts()
+    {
+        if (!AuthService.AuthState.IsAuthenticated) return;
 
-	private void HandlePostDeleted(string id)
-	{
-		_posts.RemoveAll(p => p.id == id);
-	}
+        try
+        {
+            isLoading = true;
+            error = "";
+            posts = await ApiService.GetPostsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = "An error occurred while loading posts.";
+            Console.WriteLine($"Error fetching posts: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
 
-	private Task HandleLoggedIn() => LoadAsync();
+    private void HandleOpenPostModal() => isPostModalOpen = true;
+    private void HandleClosePostModal() => isPostModalOpen = false;
 
-	private void OpenCreate() => _createModal?.Open();
+    private async Task HandlePostCreated()
+    {
+        await FetchPosts();
+        isPostModalOpen = false;
+    }
+
+    private async Task HandlePostDeleted()
+    {
+        await FetchPosts();
+    }
+
+    private async Task HandlePostUpdated()
+    {
+        await FetchPosts();
+    }
+
+    private void HandleNameModalClose()
+    {
+        isNameModalOpen = false;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
+    }
 }

@@ -30,12 +30,16 @@ public class LikeController {
     }
 
     @DeleteMapping
-    public ResponseEntity<?> unlike(@PathVariable String postId, @RequestBody(required = false) LikeRequest body) {
+    public ResponseEntity<?> unlike(@PathVariable String postId,
+                                    @RequestHeader(value = "x-username", required = false) String username) {
         if (postService.getPost(postId).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(error("NOT_FOUND", "Post not found"));
         }
-        String username = body != null ? body.getUsername() : null;
+        if (username == null || username.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(error("VALIDATION_ERROR", "Username header 'x-username' is required to unlike a post"));
+        }
         likeService.unlike(postId, username);
         return ResponseEntity.noContent().build();
     }

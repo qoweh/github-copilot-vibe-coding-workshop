@@ -1,5 +1,6 @@
 using Contoso.BlazorApp.Components;
 using Contoso.BlazorApp.Services;
+using Contoso.BlazorApp.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,18 +8,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Configure typed HttpClient for backend API (Spring Boot) base address
-builder.Services.AddHttpClient("Api", client =>
-{
-    client.BaseAddress = new Uri("http://localhost:8080/api/");
-    client.DefaultRequestHeaders.Accept.Clear();
-    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-});
+// Configure API settings
+builder.Services.Configure<ApiSettings>(
+    builder.Configuration.GetSection(ApiSettings.SectionName));
 
-// Register application services (to be implemented)
-builder.Services.AddScoped<AuthState>();
-builder.Services.AddScoped<PostApiService>();
-builder.Services.AddScoped<CommentApiService>();
+// Add HttpClient for API calls
+builder.Services.AddHttpClient();
+
+// Add custom services
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ApiService>();
 
 var app = builder.Build();
 
@@ -31,7 +30,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 
 app.UseAntiforgery();
 
