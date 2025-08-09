@@ -12,12 +12,13 @@ builder.Services.AddRazorComponents()
 builder.Services.Configure<ApiSettings>(
     builder.Configuration.GetSection(ApiSettings.SectionName));
 
-// Add HttpClient for API calls
-builder.Services.AddHttpClient();
+// Add HttpClient for API calls with username header handler
+builder.Services.AddTransient<UsernameHeaderHandler>();
+builder.Services.AddHttpClient<ApiService>()
+    .AddHttpMessageHandler<UsernameHeaderHandler>();
 
 // Add custom services
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<ApiService>();
 
 var app = builder.Build();
 

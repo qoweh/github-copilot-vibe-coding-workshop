@@ -14,6 +14,14 @@ builder.Services.Configure<ApiSettings>(
 
 // Add HttpClient for API calls
 builder.Services.AddHttpClient();
+builder.Services.AddTransient<UsernameHeaderHandler>();
+builder.Services.AddHttpClient("Api", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:8080/api/");
+    client.DefaultRequestHeaders.Accept.Clear();
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+})
+    .AddHttpMessageHandler<UsernameHeaderHandler>();
 
 // Add custom services
 builder.Services.AddScoped<AuthService>();
