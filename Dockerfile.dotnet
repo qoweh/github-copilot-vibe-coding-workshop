@@ -1,0 +1,38 @@
+# Multi-stage build for Contoso Blazor (.NET 9)
+# Target runtime port: 8080
+
+## ---------- Build Stage ----------
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy project file(s) and restore (better layer caching)
+COPY dotnet/Contoso.BlazorApp/Contoso.BlazorApp.csproj dotnet/Contoso.BlazorApp/
+RUN dotnet restore dotnet/Contoso.BlazorApp/Contoso.BlazorApp.csproj
+
+# Copy the remaining source
+COPY dotnet/Contoso.BlazorApp/ dotnet/Contoso.BlazorApp/
+
+# Publish (self-contained not required; framework-dependent)
+WORKDIR /src/dotnet/Contoso.BlazorApp
+RUN dotnet publish -c Release -o /app/publish --no-restore
+
+## ---------- Runtime Stage ----------
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+
+# Set environment variables
+# ASPNETCORE_URLS binds Kestrel to container port 8080
+# ApiSettings__BaseUrl provided for code expecting configuration binding
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ApiSettings__BaseUrl=http://localhost:8080/api \
+    DOTNET_EnableDiagnostics=0
+
+# Copy published output
+COPY --from=build /app/publish .
+
+# Expose application port
+EXPOSE 8080
+
+# Health probe example (optional): dotnet exec readiness could go here if using script
+
+ENTRYPOINT ["dotnet", "Contoso.BlazorApp.dll"]

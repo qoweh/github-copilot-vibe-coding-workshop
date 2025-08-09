@@ -107,14 +107,12 @@
 
             if (isLiked)
             {
-                await ApiService.UnlikePostAsync(PostId, user.Username);
-                likesCount--;
+                likesCount = await ApiService.UnlikePostAsync(PostId, user.Username);
                 isLiked = false;
             }
             else
             {
-                var result = await ApiService.LikePostAsync(PostId, user.Username);
-                likesCount = result.LikesCount;
+                likesCount = await ApiService.LikePostAsync(PostId, user.Username);
                 isLiked = true;
             }
             StateHasChanged();

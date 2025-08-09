@@ -39,13 +39,9 @@ public class ApiService
         _logger.LogDebug("CODESPACE_NAME: {CodespaceName}", codespaceUrl ?? "null");
         _logger.LogDebug("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: {Domain}", githubCodespacesPortForwardingDomain ?? "null");
         
-        if (!string.IsNullOrEmpty(codespaceUrl) && !string.IsNullOrEmpty(githubCodespacesPortForwardingDomain))
-        {
-            // Construct GitHub Codespaces URL: https://{codespace-name}-8080.{domain}/api/
-            var codespacesUrl = $"https://{codespaceUrl}-8080.{githubCodespacesPortForwardingDomain}/api/";
-            _logger.LogInformation("Using GitHub Codespaces URL: {CodespacesUrl}", codespacesUrl);
-            return codespacesUrl;
-        }
+    // NOTE: Disabled automatic Codespaces tunnel URL because it returns a 302 to an auth handshake
+    // for unauthenticated requests from server-side Blazor, causing HTML to be returned ('<' parse error)
+    // Instead, always use configured BaseUrl (localhost inside the dev container network)
 
         // Fall back to configured base URL (localhost)
         // Ensure the URL ends with a forward slash for proper relative path resolution
@@ -125,25 +121,28 @@ public class ApiService
         return;
     }
 
-    public async Task<Post> LikePostAsync(string postId, string username)
+    public async Task<int> LikePostAsync(string postId, string username)
     {
         SetAuthHeaders();
         var request = new LikeRequest { Username = username };
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        
         var response = await _httpClient.PostAsync($"posts/{postId}/likes", content);
-        response.EnsureSuccessStatusCode();
-        var responseJson = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<Post>(responseJson, JsonOptions)!;
+        response.EnsureSuccessStatusCode(); // 201 with LikeResponse (no likesCount)
+        // Fetch updated post to retrieve likes count
+        var post = await GetPostAsync(postId);
+        return post.LikesCount;
     }
 
-    public async Task UnlikePostAsync(string postId, string username)
+    public async Task<int> UnlikePostAsync(string postId, string username)
     {
         SetAuthHeaders();
-        var response = await _httpClient.DeleteAsync($"posts/{postId}/likes?username={username}");
-        response.EnsureSuccessStatusCode();
-        return;
+        // Unlike now requires username header, body not needed
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"posts/{postId}/likes");
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode(); // 204 No Content
+        var post = await GetPostAsync(postId);
+        return post.LikesCount;
     }
 
     public async Task<List<Post>> SearchPostsAsync(string query)

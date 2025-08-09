@@ -8,24 +8,26 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Configure API settings
-builder.Services.Configure<ApiSettings>(
-    builder.Configuration.GetSection(ApiSettings.SectionName));
+// Configure API settings (currently minimal)
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
 
-// Add HttpClient for API calls
-builder.Services.AddHttpClient();
+// Auth + state
+builder.Services.AddSingleton<AuthState>();
+
+// HTTP client with username header propagation
 builder.Services.AddTransient<UsernameHeaderHandler>();
 builder.Services.AddHttpClient("Api", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:8080/api/");
+    // Use configured base url or fallback
+    var baseUrl = builder.Configuration.GetSection(ApiSettings.SectionName).Get<ApiSettings>()?.BaseUrl?.TrimEnd('/') ?? "http://contoso-backend:8080/api";
+    client.BaseAddress = new Uri(baseUrl.EndsWith("/api") ? baseUrl + "/" : baseUrl + "/");
     client.DefaultRequestHeaders.Accept.Clear();
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-})
-    .AddHttpMessageHandler<UsernameHeaderHandler>();
+}).AddHttpMessageHandler<UsernameHeaderHandler>();
 
-// Add custom services
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<ApiService>();
+// Domain services
+builder.Services.AddScoped<PostApiService>();
+builder.Services.AddScoped<CommentApiService>();
 
 var app = builder.Build();
 

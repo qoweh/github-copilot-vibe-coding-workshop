@@ -56,16 +56,17 @@ public class PostApiService
         if(!_auth.IsAuthenticated) throw new InvalidOperationException("User not logged in");
         var req = new LikeRequest(_auth.CurrentUser!.Username);
         var response = await Client.PostAsJsonAsync($"posts/{postId}/likes", req);
-        response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return payload.GetProperty("likesCount").GetInt32();
+        response.EnsureSuccessStatusCode(); // 201 with LikeResponse (no likesCount per spec)
+        // Fetch updated post to obtain new likesCount
+        var post = await GetPostAsync(postId);
+        return post?.likesCount ?? 0;
     }
 
     public async Task<int> UnlikeAsync(string postId)
     {
         var response = await Client.DeleteAsync($"posts/{postId}/likes");
-        response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return payload.GetProperty("likesCount").GetInt32();
+        response.EnsureSuccessStatusCode(); // 204 No Content
+        var post = await GetPostAsync(postId);
+        return post?.likesCount ?? 0;
     }
 }
