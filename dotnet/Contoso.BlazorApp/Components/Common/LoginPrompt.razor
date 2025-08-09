@@ -1,0 +1,22 @@
+@namespace Contoso.BlazorApp.Components.Common
+@inject Services.AuthState Auth
+
+<div class="flex flex-col items-center gap-4 p-6">
+    <h2 class="text-xl font-bold">Enter your name</h2>
+    <input @bind-value="_username" @bind-value:event="oninput" class="border rounded px-3 py-2" placeholder="Name" />
+    <button class="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50" disabled="@(!_canSubmit)" @onclick="Submit">Done</button>
+</div>
+
+@code {
+    private string _username = string.Empty;
+    private bool _canSubmit => !string.IsNullOrWhiteSpace(_username);
+
+    [Parameter] public EventCallback OnLogin { get; set; }
+
+    private async Task Submit()
+    {
+        if(!_canSubmit) return;
+        await Auth.LoginAsync(_username);
+        await OnLogin.InvokeAsync();
+    }
+}

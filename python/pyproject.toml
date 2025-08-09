@@ -1,0 +1,32 @@
+[project]
+name = "social-api"
+version = "0.1.0"
+description = "Simple social media API (FastAPI)"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [ { name = "Contoso Product Team" } ]
+license = { text = "MIT" }
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.7.0",
+  "pyyaml>=6.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.0",
+  "pytest>=8.2.0",
+  "httpx>=0.27.0"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# Enable faster resolver features if any future toggles are needed.
+
+[dependency-groups]
+# Additional grouped deps (uv specific) for local tooling
+lint = ["ruff>=0.5.0"]

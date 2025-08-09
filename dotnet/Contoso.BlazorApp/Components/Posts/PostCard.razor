@@ -1,0 +1,60 @@
+@namespace Contoso.BlazorApp.Components.Posts
+@inject Services.PostApiService PostApi
+@inject Services.AuthState Auth
+
+<div class="flex flex-col w-full max-w-2xl bg-white border-b border-gray-200 p-4 cursor-pointer" @onclick="OpenDetail">
+    <div class="flex items-center mb-2">
+        <div class="w-10 h-10 rounded-full bg-gray-200 mr-2"></div>
+        <div class="text-base font-bold">@Post.username</div>
+    </div>
+    <div class="mb-2">
+        <p class="text-base leading-relaxed break-words">@Post.content</p>
+    </div>
+    <div class="flex gap-6 mt-2">
+        <button class="flex items-center gap-1" @onclick:stopPropagation="true" @onclick="ToggleLike">
+            <span>@(_liked ? "♥" : "♡")</span>
+            @if(_likesCount > 0){<span class="text-xs">@_likesCount</span>}
+        </button>
+        <button class="flex items-center gap-1 text-gray-600" @onclick:stopPropagation="true" @onclick="OpenDetail">
+            💬 @if(Post.commentsCount>0){<span class="text-xs">@Post.commentsCount</span>}
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Services.PostApiService.PostDto Post { get; set; } = default!;
+    [Parameter] public EventCallback<Services.PostApiService.PostDto> OnPostUpdated { get; set; }
+    [Parameter] public EventCallback<string> OnPostDeleted { get; set; }
+
+    private bool _liked;
+    private int _likesCount;
+
+    protected override void OnParametersSet()
+    {
+        _liked = Post.isLiked ?? false;
+        _likesCount = Post.likesCount;
+    }
+
+    private async Task ToggleLike()
+    {
+        if(!Auth.IsAuthenticated) return;
+        try
+        {
+            if(_liked)
+            {
+                _likesCount = await PostApi.UnlikeAsync(Post.id);
+                _liked = false;
+            } else {
+                _likesCount = await PostApi.LikeAsync(Post.id);
+                _liked = true;
+            }
+            await OnPostUpdated.InvokeAsync(Post with { likesCount = _likesCount, isLiked = _liked });
+        }
+        catch { }
+    }
+
+    private void OpenDetail()
+    {
+        // TODO: navigate to detail page when implemented
+    }
+}

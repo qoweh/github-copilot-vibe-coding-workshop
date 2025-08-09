@@ -1,0 +1,40 @@
+@namespace Contoso.BlazorApp.Components.Posts
+<div class="modal-backdrop" hidden="@(!_open)" @onclick="BackdropClick">
+    <div class="modal" @onclick:stopPropagation="true">
+        <h3 class="font-bold mb-2">Create Post</h3>
+        <textarea class="w-full border rounded p-2 mb-2" @bind="_content" rows="5" />
+        <div class="flex gap-2 justify-end">
+            <button class="px-4 py-2 rounded bg-gray-200" @onclick="Close">Cancel</button>
+            <button class="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50" disabled="@(!_canSave)" @onclick="Save">Submit</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _open;
+    private string _content = string.Empty;
+    private bool _canSave => !string.IsNullOrWhiteSpace(_content);
+
+    [Parameter] public EventCallback<Services.PostApiService.PostDto> OnCreated { get; set; }
+
+    [Inject] public Services.PostApiService PostApi { get; set; } = default!;
+
+    public void Open() { _open = true; StateHasChanged(); }
+    public void Close() { _open = false; _content = string.Empty; }
+
+    private void BackdropClick() => Close();
+
+    private async Task Save()
+    {
+        if(!_canSave) return;
+        var created = await PostApi.CreatePostAsync(_content.Trim());
+        if(created is not null)
+            await OnCreated.InvokeAsync(created);
+        Close();
+    }
+}
+
+<style>
+.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; }
+.modal { background:white; padding:1.25rem; border-radius:.5rem; width:90%; max-width:480px; }
+</style>

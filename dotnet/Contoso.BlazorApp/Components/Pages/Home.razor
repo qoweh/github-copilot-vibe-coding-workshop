@@ -1,0 +1,85 @@
+﻿@page "/"
+@inject Services.PostApiService PostApi
+@inject Services.AuthState Auth
+
+<PageTitle>Home</PageTitle>
+
+@if(!_initialized)
+{
+	<p class="text-center py-4 text-gray-500">Loading...</p>
+}
+else if(!Auth.IsAuthenticated)
+{
+	<LoginPrompt OnLogin="HandleLoggedIn" />
+}
+else if(_error is not null)
+{
+	<div class="text-red-500">@_error</div>
+}
+else if(_posts.Count == 0)
+{
+	<div class="text-gray-400">No posts yet.</div>
+}
+else
+{
+	<div class="flex flex-col gap-4">
+		@foreach (var p in _posts)
+		{
+			<PostCard Post="p" OnPostUpdated="HandlePostUpdated" OnPostDeleted="HandlePostDeleted" />
+		}
+	</div>
+}
+
+@if (Auth.IsAuthenticated)
+{
+	<FabButton OnClick="OpenCreate" />
+	<PostCreateModal @ref="_createModal" OnCreated="HandleCreated" />
+}
+
+@code {
+	private bool _initialized;
+	private string? _error;
+	private List<Services.PostApiService.PostDto> _posts = new();
+	private Contoso.BlazorApp.Components.Posts.PostCreateModal? _createModal;
+
+	protected override async Task OnInitializedAsync()
+	{
+		if(Auth.IsAuthenticated)
+			await LoadAsync();
+		_initialized = true;
+	}
+
+	private async Task LoadAsync()
+	{
+		try
+		{
+			_error = null;
+			_posts = await PostApi.GetPostsAsync();
+		}
+		catch(Exception)
+		{
+			_error = "Failed to load posts.";
+		}
+	}
+
+	private async Task HandleCreated(Services.PostApiService.PostDto post)
+	{
+		_posts.Insert(0, post);
+		StateHasChanged();
+	}
+
+	private void HandlePostUpdated(Services.PostApiService.PostDto updated)
+	{
+		var idx = _posts.FindIndex(p => p.id == updated.id);
+		if(idx >=0) _posts[idx] = updated;
+	}
+
+	private void HandlePostDeleted(string id)
+	{
+		_posts.RemoveAll(p => p.id == id);
+	}
+
+	private Task HandleLoggedIn() => LoadAsync();
+
+	private void OpenCreate() => _createModal?.Open();
+}
